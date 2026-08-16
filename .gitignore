@@ -1,0 +1,40 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+
+# --- Training outputs (large, regenerable — don't commit) ---
+results/*
+!results/.gitkeep
+wandb/
+runs/
+*.zip
+*.pth
+*.pt
+
+# --- TensorBoard ---
+events.out.tfevents.*
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+
+# --- OS / editor cruft ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# --- PyBullet / gym-pybullet-drones artifacts ---
+*.mp4
+*.png
+!Papers/*.pdf

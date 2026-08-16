@@ -1,0 +1,9 @@
+# --- Install torch separately first, with the CUDA-matched index URL ---
+#   pip install torch --index-url https://download.pytorch.org/whl/cu124
+# then install everything below with:
+#   pip install -r requirements.txt
+
+gym-pybullet-drones @ git+https://github.com/utiasDSL/gym-pybullet-drones.git
+stable-baselines3[extra]
+tensorboard
+wandb
