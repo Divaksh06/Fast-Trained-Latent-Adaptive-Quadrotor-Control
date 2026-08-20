@@ -163,7 +163,15 @@ class PaperHoverEnv(HoverAviary):
         quat = state[3:7]        # PyBullet order: [x, y, z, w]
         vel = state[10:13]
         ang_v = state[13:16]
-        last_action = state[16:20]  # normalized commanded action in [-1, 1]
+        # NOTE: Do NOT use state[16:20] for the action penalty!
+        # state[16:20] is self.last_clipped_action from BaseAviary -- these
+        # are raw RPM values (~14k-24k), NOT normalized [-1, 1] actions.
+        # Squaring RPM magnitudes produces billion-scale penalties that
+        # completely drown out the position/velocity/attitude terms.
+        # The actual normalized [-1, 1] actions live in self.action_buffer,
+        # which BaseRLAviary._preprocessAction() populates *before* the
+        # action-to-RPM conversion.
+        last_action = self.action_buffer[-1][0]  # (NUM_DRONES, act_dim) -> drone 0's normalized action
 
         qw = quat[3]
         err_pos = float(np.sum((pos - self.TARGET_POS) ** 2))
