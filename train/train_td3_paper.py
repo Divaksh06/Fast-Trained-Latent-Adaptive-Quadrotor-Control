@@ -9,6 +9,7 @@ Section III/IV), with:
 Run:
     python train/train_td3_paper.py --total-steps 300000
     python train/train_td3_paper.py --total-steps 300000 --disturbances
+    python train/train_td3_paper.py --total-steps 300000 --gui   # render training live
 
 The paper's headline result is ~300_000 steps (~18s wall-clock on their
 massively-parallel GPU simulator) for a reliable policy; on a single
@@ -69,23 +70,23 @@ class ExplorationDecayCallback(BaseCallback):
         return True
 
 
-def make_env(disturbances: bool, log_dir: str):
+def make_env(disturbances: bool, log_dir: str, gui: bool = False):
     def _init():
         env = PaperHoverEnv(
             motor_time_constant=0.15,
             max_disturbance_force=0.05 if disturbances else 0.0,   # Newtons
             max_disturbance_torque=0.002 if disturbances else 0.0, # N*m
             obs_noise_std=0.01,
-            gui=False,
+            gui=gui,
         )
         return Monitor(env, log_dir)
     return _init
 
 
-def main(total_steps: int, disturbances: bool, log_dir: str, seed: int):
+def main(total_steps: int, disturbances: bool, log_dir: str, seed: int, gui: bool = False):
     os.makedirs(log_dir, exist_ok=True)
 
-    env = make_vec_env(make_env(disturbances, log_dir), n_envs=1, seed=seed)
+    env = make_vec_env(make_env(disturbances, log_dir, gui=gui), n_envs=1, seed=seed)
     action_dim = env.action_space.shape[-1]
 
     model = TD3(
@@ -127,5 +128,7 @@ if __name__ == "__main__":
                          help="enable the random per-episode force/torque disturbance")
     parser.add_argument("--log-dir", type=str, default="results/td3_paper_baseline")
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--gui", action="store_true",
+                         help="open PyBullet GUI to visualize training in real time (slower)")
     args = parser.parse_args()
-    main(args.total_steps, args.disturbances, args.log_dir, args.seed)
+    main(args.total_steps, args.disturbances, args.log_dir, args.seed, gui=args.gui)
