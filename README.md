@@ -97,11 +97,12 @@ The main training script follows the TD3 configuration from Eschmann et al., "Le
 - A **curriculum callback** that anneals reward weights from lenient → strict over the first third of training
 - An **exploration noise decay** callback (σ: 0.3 → 0.05)
 - **Motor delay** modeled as a first-order low-pass filter (the paper's most critical ablation finding)
+- **Automatic weight resumption** — if saved weights exist from a previous session, training resumes from the latest checkpoint instead of starting from scratch
 
 ### Train (headless — fastest)
 
 ```bash
-# Default: 300k steps, no disturbances
+# Default: 300k steps, no disturbances (auto-resumes if weights exist)
 python train/train_td3_paper.py
 
 # With disturbances (random force/torque per episode)
@@ -110,19 +111,34 @@ python train/train_td3_paper.py --disturbances
 # Custom step count and seed
 python train/train_td3_paper.py --total-steps 500000 --seed 42
 
+# Force fresh start (ignore existing weights)
+python train/train_td3_paper.py --total-steps 300000 --fresh
+
 # Custom output directory
 python train/train_td3_paper.py --total-steps 300000 --log-dir results/my_experiment
 ```
+
+### Training Memory (Auto-Resume)
+
+Each time you train, the script automatically:
+1. **Checks for existing weights** in the log directory
+2. **Resumes from the latest checkpoint** if found (loads model + replay buffer)
+3. **Saves versioned checkpoints** with timestamps (e.g., `td3_paper_hover_20260904_001500.zip`) alongside the canonical `td3_paper_hover.zip`
+4. **Persists the replay buffer** (`td3_replay_buffer.pkl`) so off-policy experience accumulates across sessions
+5. **Tracks cumulative timesteps** in `training_metadata.json` so curriculum and exploration schedules continue seamlessly
+
+Use `--fresh` to discard all previous progress and start from scratch.
 
 ### All training flags
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--total-steps` | `300000` | Total environment steps for training |
+| `--total-steps` | `300000` | Total environment steps for this training session |
 | `--disturbances` | off | Enable random per-episode force/torque disturbances |
 | `--log-dir` | `results/td3_paper_baseline` | Directory for checkpoints, TensorBoard logs, and monitor CSV |
 | `--seed` | `0` | Random seed for reproducibility |
 | `--gui` | off | Open PyBullet GUI to watch training live (much slower — see [Rendering](#rendering)) |
+| `--fresh` | off | Force a fresh start, ignoring any existing saved weights |
 
 ### Monitor training with TensorBoard
 
@@ -131,6 +147,56 @@ tensorboard --logdir results/td3_paper_baseline
 ```
 
 Then open `http://localhost:6006` in your browser.
+
+---
+
+## Simulation & Diagnostics
+
+After training, use `simulate_hover.py` to evaluate the learned policy **without further training**. It runs the drone in PyBullet, collects detailed metrics, and generates timestamped diagnostic reports.
+
+```bash
+# Default: 10 episodes, headless, auto-detects latest weights
+python train/simulate_hover.py
+
+# With PyBullet GUI visualization
+python train/simulate_hover.py --gui --episodes 5
+
+# Specific model checkpoint
+python train/simulate_hover.py --model results/td3_paper_baseline/td3_paper_hover.zip
+```
+
+### What the simulation does
+
+1. **Clean episodes** — runs N episodes without disturbances to measure baseline hover performance
+2. **Random-baseline episodes** — runs 3 episodes with random actions for comparison (learning assessment)
+3. **Disturbance episodes** — runs N episodes with force/torque disturbances (overfitting detection)
+
+### Report output
+
+Reports are saved to `simulation_reports/` with timestamps:
+
+```
+simulation_reports/
+├── sim_report_20260904_001500.txt    # human-readable summary
+├── sim_report_20260904_001500.json   # machine-readable data
+└── ...
+```
+
+Each report contains:
+- **Per-episode results** — hover time, reward, position error, crash/truncation status
+- **Aggregate metrics** — mean ± std for all metrics, crash rate, stability score
+- **Learning assessment** — trained policy reward vs. random baseline (has the model learned?)
+- **Overfitting check** — clean vs. disturbance performance (>30% degradation flags potential overfitting)
+- **Verdict** — overall assessment with recommendations for next steps
+
+### All simulation flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--model` | auto-detect latest | Path to saved TD3 `.zip` checkpoint |
+| `--episodes` | `10` | Number of evaluation episodes to run |
+| `--gui` | off | Open PyBullet GUI for the clean episodes (slower) |
+| `--log-dir` | `results/td3_paper_baseline` | Directory to search for saved models |
 
 ---
 
@@ -162,6 +228,14 @@ python train/eval_td3_paper.py --episodes 5 --disturbances
 
 # Headless (print metrics only, no window)
 python train/eval_td3_paper.py --no-gui
+```
+
+### Option C: Simulation with diagnostics
+
+For detailed evaluation with reports (see [Simulation & Diagnostics](#simulation--diagnostics) above):
+
+```bash
+python train/simulate_hover.py --gui --episodes 5
 ```
 
 ### All evaluation flags
@@ -209,9 +283,16 @@ Alternatively, train headless (no `--gui` flag) and download the checkpoint to a
 │   ├── paper_hover_env.py        # PaperHoverEnv: the paper's reward, motor delay, disturbances, curriculum
 │   └── sanity_check.py           # Quick test that gym-pybullet-drones is installed correctly
 ├── train/
-│   ├── train_td3_paper.py        # Main TD3 training script (curriculum + exploration decay)
-│   └── eval_td3_paper.py         # Load a trained model and render it in the GUI
-├── results/                      # Checkpoints, TensorBoard logs, monitor CSVs (gitignored)
+│   ├── train_td3_paper.py        # Main TD3 training script (auto-resume, curriculum, exploration decay)
+│   ├── eval_td3_paper.py         # Load a trained model and render it in the GUI
+│   └── simulate_hover.py         # Run hover simulation and generate diagnostic reports
+├── results/                      # Checkpoints, replay buffers, TensorBoard logs, metadata (gitignored)
+│   └── td3_paper_baseline/
+│       ├── td3_paper_hover.zip           # Latest (canonical) model weights
+│       ├── td3_paper_hover_<timestamp>.zip  # Versioned checkpoints
+│       ├── td3_replay_buffer.pkl         # Persisted replay buffer
+│       └── training_metadata.json        # Cumulative timesteps & session history
+├── simulation_reports/           # Timestamped simulation diagnostic reports (.txt + .json)
 ├── Papers/                       # Reference PDFs
 └── .gitignore
 ```

@@ -1,0 +1,48 @@
+============================================================
+    QUADROTOR HOVER SIMULATION REPORT
+============================================================
+Timestamp       : 2026-09-04 00:17:05
+Model           : results/td3_paper_baseline/td3_paper_hover.zip
+Episodes (clean): 3
+
+------------------------------------------------------------
+PER-EPISODE RESULTS (no disturbances)
+------------------------------------------------------------
+  Ep  1: hover=8.07s  reward= -197.83  pos_err=0.5340  [FULL]
+  Ep  2: hover=8.07s  reward= -271.97  pos_err=0.5456  [FULL]
+  Ep  3: hover=8.07s  reward= -282.18  pos_err=0.5836  [FULL]
+
+------------------------------------------------------------
+AGGREGATE METRICS
+------------------------------------------------------------
+  Mean hover time   : 8.07s ± 0.00s (max possible: 8.00s)
+  Hover coverage    : 100.8%
+  Mean reward       : -250.66 ± 37.59
+  Mean position err : 0.5544 ± 0.0212
+  Mean velocity     : 0.5835 ± 0.0549
+  Mean angular rate : 0.5677 ± 0.0554
+  Crash rate        : 0.0%
+  Stability score   : 0.0259 (1.0 = perfectly consistent)
+
+------------------------------------------------------------
+LEARNING ASSESSMENT
+------------------------------------------------------------
+  Random policy reward : -27.80 ± 1.00
+  Trained policy reward: -250.66 ± 37.59
+  Status: ✗ MODEL HAS NOT LEARNED SIGNIFICANTLY (only -9.0x of random)
+
+------------------------------------------------------------
+OVERFITTING CHECK
+------------------------------------------------------------
+  Performance (clean)       : -250.66 ± 37.59
+  Performance (disturbances): -25.41 ± 3.81
+  Status: ✓ NO OVERFITTING DETECTED (0.0% degradation < 30% threshold)
+
+------------------------------------------------------------
+VERDICT
+------------------------------------------------------------
+  • The model has NOT yet learned meaningful hover behavior.
+  • Excellent hover duration (101% of max episode length).
+  • No crashes detected — policy is stable within tested conditions.
+
+============================================================
